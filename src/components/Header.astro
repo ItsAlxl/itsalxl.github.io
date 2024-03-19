@@ -1,0 +1,22 @@
+---
+import { LightmodeToggle } from "@/components/LightmodeToggle.tsx";
+import { Nav } from "@/components/Nav";
+---
+
+<header class="sticky top-0 z-50 w-full border-b mb-6">
+  <div
+    class="container flex h-16 items-center space-x-4 sm:justify-between sm:space-x-0"
+  >
+    <div class="flex gap-6 md:gap-10">
+      <a href="/" class="flex items-center ">
+        <h1>It's alxl! c:</h1>
+      </a>
+      <nav class="flex items-center ">
+        <Nav client:load />
+      </nav>
+    </div>
+    <div class="flex flex-1 items-center justify-end ">
+      <LightmodeToggle client:only />
+    </div>
+  </div>
+</header>
