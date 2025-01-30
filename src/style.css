@@ -1,0 +1,15 @@
+@import "tailwindcss";
+@plugin "daisyui";
+
+@plugin "daisyui/theme" {
+  name: "night";
+  --font-sans: "Poppins, ui-sans-serif, system-ui, sans-serif, Apple Color Emoji, Segoe UI Emoji, Segoe UI Symbol, Noto Color Emoji";
+}
+
+html {
+  scroll-padding-top: 75px;
+}
+
+.link {
+  @apply link-primary;
+}
