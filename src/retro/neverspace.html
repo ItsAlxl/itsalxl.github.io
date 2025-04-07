@@ -1,0 +1,355 @@
+<!DOCTYPE html>
+<!-- TODO: theme selector -->
+<html lang="en" data-theme="night">
+
+<head>
+	<title>alxl - Neverspace breakdown</title>
+	<meta name="Description" content="Explaining the technical magic tricks of Neverspace" />
+	<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+	<meta property="og:title" content="alxl - Neverspace breakdown" />
+	<meta property="og:description" content="Explaining the technical magic tricks of Neverspace" />
+
+	<link rel="icon" type="image/png" href="/favicon.png" />
+	<link href="/style.css" type="text/css" rel="stylesheet" />
+
+	<link rel="preconnect" href="https://fonts.googleapis.com">
+	<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+	<link
+		href="https://fonts.googleapis.com/css2?family=Josefin+Sans:ital,wght@0,100..700;1,100..700&family=Poppins:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900&display=swap"
+		rel="stylesheet">
+</head>
+
+<body>
+	<div class="m-auto h-full w-[80%]">
+		<div class="text-5xl font-bold pt-5 pb-5" id="games">The Technical Magic Tricks of Neverspace</div>
+		<p class="pb-3">
+			A few weeks ago, the in-dev video game platform <a class="link" href="https://sbox.game/about">s&box</a>
+			held a <a class="link" href="https://sbox.game/c/tech1">Tech Jam</a>. Basically, the challenge went out for
+			developers to come up with eye-catching technology and implement it in s&box within about a month.
+			Seeing the opportunity to not only dive head-first into an engine I was still largely unfamiliar with, but
+			also to play around with a technical side of video games that I usually don't toy with, I was very motivated
+			to participate. The possibility of the cash prize didn't hurt, either!
+		</p>
+		<p class="pb-3">
+			Of course, this prompted an obvious question: what on Earth was I going to develop?
+		</p>
+		<p class="pb-3">
+			I tried to think of things I had seen in games that really impressed me in the past, and an obvious
+			candidate immediately sprung to mind - the 2006 game Prey. Despite its age, it features mechanics I still
+			haven't seen in many other games like portals, gravity-changing walkways, and small planetoids that you walk
+			on. What better inspiration could I ask for?
+		</p>
+		<p class="pb-3">
+			So I started working on the game, which I titled "<a
+				href="https://sbox.game/pwegg/neverspace">Neverspace</a>." I knew I really wanted to focus on the tech,
+			rather than the gameplay, so I tried to come up with levels that could use the mechanics in surprising ways.
+			One of the very first rooms is almost directly lifted from Prey, which had left such a lasting impression on
+			me that it only felt appropriate to pay them an homage. In the end, the game plays for about 5-10 minutes,
+			featuring and highlighting all of the tech I had intended for it. You can watch a six-minute playthrough
+			here if you want to see it for yourself before I break down how it all works.
+		</p>
+		<div class="flex flex-row flex-wrap justify-center gap-2 pb-3">
+			<iframe src="https://www.youtube.com/embed/wAZBcAhFEZM" style="border:0px #ffffff none;"
+				name="Neverspace Playthrough" scrolling="no" frameborder="1" marginheight="0px" marginwidth="0px"
+				height="360px" width="640px" allowfullscreen></iframe>
+		</div>
+		<p class="pb-3">
+			There are 3 fundamental pieces of tech at work here:
+		</p>
+		<ul class="list-disc list-inside pl-5 pr-5 pb-3">
+			<li>Portals - Look into a different area and teleport to it</li>
+			<li>Gravity - Walk on walls or upside-down with walkways, walk on the surface of a planetoid or go into
+				orbit around it</li>
+			<li>Quantum - Some things change behavior depending on whether or not you are looking at them ("Observable"
+				would probably have been a better name, but that proverbial ship has sailed)</li>
+		</ul>
+		<p class="pb-3">
+			I'll go through each of these, explaining them in detail, before wrapping up with some existing issues.
+		</p>
+		<div class="divider uppercase text-secondary text-xl font-bold" id="Portals">Portals</div>
+		<p class="pb-3">
+			The first thing I worked on is also the one that's most common in other games. Even if portals aren't in a
+			game per-se, the technology behind them might be. That said, they are by far the most complicated
+			tech in Neverspace, so they'll require quite a lot of explanation.
+		</p>
+		<p class="pb-3">
+			Portals are really composed of two different tricks working together. One is their namesake - you are
+			instantly teleported to another location when you walk through them. This is so simple that it doesn't
+			really require any explanation; detecting when a portal traveler has crossed through a portal is
+			straightforward using collision detection from the physics engine, and teleporting them is as simple as
+			setting their position to the target destination.
+		</p>
+		<p class="pb-3">
+			There are a few caveats, of course. First of all, travelers aren't simply teleported to the location of the
+			exit portal. The traveler's offset from the center of the entrance portal has to be recreated on exit, as
+			does their relative rotation - and because I wanted to go the extra mile, I wanted to be able to change
+			objects' sizes when teleporting from a larger portal to a smaller one.
+		</p>
+		<p class="pb-3">
+			Thankfully, this is not actually <i>that</i> complicated. 3D objects have transforms, and while explaining
+			those in-depth is outside the scope of this write-up, the short explanation is that they store all 3D
+			information - position, rotation, and scale. So by finding the relative transform from the entrance portal
+			to the exit portal, and then applying that to the traveler's transform, everything is preserved. Usefully,
+			that same transform can also be applied to the velocity, allowing for smooth movement even through portals
+			that are facing totally different directions.
+		</p>
+		<p class="pb-3">
+			The far more complicated part is taking something else along. I wanted the player to be able to pick up and
+			carry objects with them through portals. Obviously, I don't want them to be able to pick things up from
+			infinitely far away, and I don't want them to drop whatever they're carrying when they pass through a
+			portal. But this means coming up with a way to calculate distance that keeps the portals in mind, treating
+			two very distant locations as adjacent.
+		</p>
+		<p class="pb-3">
+			The easiest solution here, of course, is to simply prevent players from being able to carry things through a
+			portal. It would have been easy to design the game so that the possibility of carrying something through a
+			portal never really came up, but where's the fun in that?
+		</p>
+		<p class="pb-3">
+			Long story short, when the player attempts to pick up a box, a line is drawn from their viewpoint.
+			Whenever it collides with something physical (e.g. a wall), it stops; after all, you <i>shouldn't</i> be
+			able to pick things up through a wall. If it hits a box, the player picks the box up. If it hits a portal,
+			it stops, but then draws the rest of its length as a new line beginning from the linked portal.
+		</p>
+		<p class="pb-3">
+			This process is continuous as the player carries a box, so the game can constantly check if the box should
+			be forcibly dropped. This also allows for the box to continue to be held as the player passes through a
+			portal, but there's still one last hurdle to clear.
+		</p>
+		<p class="pb-3">
+			When a box is being carried, it constantly tries to move to stay in the same transform relative to
+			the player. But when only one of either it or the player teleports, it shouldn't reassert itself - because
+			it'll want to move all the way over to where the player is, even though it shouldn't. The solution here is
+			to check for when either the box or the carrier teleports, then to re-calculate the relative transform it
+			wants to move to. That way, it'll still constantly reassert its position, but now it's doing so
+			<i>through</i> the portal.
+		</p>
+		<p class="pb-3">
+			So teleportation is the first of the two effects that portals are built of. The second is the view. So far,
+			everything I've described works as a flat, opaque wall, but that's not really what we picture when we think
+			of portals. We think of windows to another place - the effect is as visual as it is transportive.
+		</p>
+		<p class="pb-3">
+			Thankfully, part of this work is already finished. What the player sees as they look through a portal is
+			based on what they would see if their viewpoint had been teleported already. So all that's needed is a new
+			camera, which I called the "ghost camera," that constantly repositions itself to where the player camera
+			would be according to the relative transform that I've already calculated for the purpose of teleportation.
+			The portal then just displays whatever its ghost camera is rendering, trimmed down to the area of the screen
+			that portal is occupying, and the effect is done.
+		</p>
+		<p class="pb-3">
+			Except... not quite. There are two main issues. The first is that if the portal is infinitely thin, then the
+			player camera will briefly see through it as the player walks through the portal, resulting in a jarring
+			one- or two-frame pop of the original location. This was fixed by making the portal slightly thicker while
+			the player was inside of it.
+		</p>
+		<p class="pb-3">
+			The second issue is difficult to describe with words alone, so I've created an incredibly high-quality
+			render of the situation below.
+		</p>
+		<div class="flex flex-row flex-wrap justify-center gap-2 pb-3">
+			<img src="neverspace_portal_cull.png"
+				alt="A diagram showing that rendering everything the ghost camera sees means it will also render objects between the camera and the portal it's viewing, which is undesirable. By rendering only the things beyond the portal it's viewing, the portal visual effect works as expected.">
+		</div>
+		<p class="pb-3">
+			In the first row of the diagram, the ghost camera will render all of the objects between itself and the exit
+			portal. Those objects then get drawn flatly to the entrance portal even though they shouldn't get drawn at
+			all for the effect to look correct. This is a pretty nasty bug, not least because it <i>looks</i> like a
+			pretty nasty bug.
+		</p>
+		<p class="pb-3">
+			Once again, the solution for this is a fairly complicated process made quite simple by the engine.
+			By supplying a plane defined by the position and angle of the exit portal, I can "cut out" the rendered
+			content between the camera and that plane, leaving us with just what lies beyond the portal. This is
+			depicted in the second row of the above diagram.
+		</p>
+		<p class="pb-3">
+			There are still a few more things that need to be done for the visuals, in particular for carrying objects
+			through portals. As you no doubt already know, nothing can exist in two places at once. But when an object
+			is halfway through a portal, it kind of <i>does</i> exist in two places at once. It'll still decidedly be on
+			one side or the other, but it needs to visually appear on both sides.
+		</p>
+		<p class="pb-3">
+			To do this, I duplicate the model of the object and move it to the other portal, according to that
+			same relative transform I've been using. But if you were to place a box halfway through a portal, then the
+			game will still render the whole box - including the part of the box that goes beyond the portal. If you
+			were to walk around to the other side of that same portal, you could see the box jutting through it. To
+			prevent this, I wrote a shader that simply cuts off everything on a model past a supplied plane - and I'm
+			already calculating portals' planes for the ghost cameras, so it was very easy to implement.
+		</p>
+		<p class="pb-3">
+			At long last, that's everything that went into making the portals of Neverspace. Particularly because the
+			entire 3D transform is used, they proved to be very versatile. The infinitely-looping hallway, impossible
+			room geometry, and shrinking machine were all created using portals.
+		</p>
+		<div class="divider uppercase text-secondary text-xl font-bold" id="gravity">Gravity</div>
+		<p class="pb-3">
+			Next I'll explain the gravity walkways and planetoids. These actually are fairly simple, though they
+			definitely required a bit of work. In many respects, the hard part of implementing these is that they are so
+			unusual that the game engine isn't really built to handle them. The engine comes with loads of built-in,
+			ready-to-use classes for physics objects and characters - and every last one of them assumes a universal,
+			constant, unidirectional gravity.
+		</p>
+		<p class="pb-3">
+			The gravity affectors themselves are dead simple; they have an area of effect and then constantly apply
+			gravity to everything in that area. This is true of both the planetoids and walkways. That's really all
+			there is to them.
+		</p>
+		<p class="pb-3">
+			The physics boxes are also relatively simple. I simply lied to them and told them there was no "ordinary"
+			gravity, which meant that the only gravity that affected them was the walkways and planetoids.
+		</p>
+		<p class="pb-3">
+			The logic for the player, however, was a minor nightmare. Not only did I have to make a complete character
+			controller from scratch - a somewhat tedious if not overly difficult prospect - but I had to make one that
+			could work at any gravity. Moving "forward" is trivial when "up" is always the same direction, but a little
+			more involved when "up" can change on a whim - or even every frame.
+		</p>
+		<p class="pb-3">
+			And then there's the process of aligning the player along that "upwards" line. Rotating 3D objects is never
+			a particularly intuitive process, and it's much more fraught when the player's perspective depends on that
+			rotation. I really wanted the rotation to be minimally-disorienting. Part of this is also changing the
+			rotation of the player's view over a short duration whenever gravity changes, rather than snapping it
+			to instantly align with the new "up."
+		</p>
+		<p class="pb-3">
+			But this effectively meant having to juggle lots of different rotations - the rotation of the player's view,
+			their body, and their movement (e.g. holding "forward" should continue to move forward relative to the
+			player, even as their gravity changes from the floor to the wall). Not difficult, exactly - but it took some
+			doing!
+		</p>
+		<div class="divider uppercase text-secondary text-xl font-bold" id="quantum">Quantum</div>
+		<p class="pb-3">
+			The final bit of tech is the Quantum objects. The most prominent of these in the game are the "elevator"
+			that takes you from room to room and the "don't look" walls that turn into portals when you look away from
+			them.
+		</p>
+		<p class="pb-3">
+			Despite being pretty flashy, the underlying technology here is pretty straightforward. A 3D camera creates a
+			rectangular frustum - picture a rectangular cup where the bottom of the cup is much smaller than the
+			top. Everything within the cup is rendered by the camera, and the engine provides a simple way to calculate
+			whether or not something is inside.
+		</p>
+		<p class="pb-3">
+			That's how most of the quantum objects work. They keep track of whether or not they're inside the player's
+			view, then do something whenever that changes. The notable exception is that aforementioned "elevator." It
+			only does something when the player's <i>entire</i> view is obstructed by the object.
+		</p>
+		<p class="pb-3">
+			I figured that the frustum could be decomposed into rays (the edges of the cup), and then those rays could
+			be tested against the object's bounds. If all rays intersect, then the entire view is being taken up by the
+			object. But I wasn't sure of a good way to test those intersections. I could have used the physics engine,
+			but that seemed like overkill and could have resulted in a pretty taxing performance hit.
+		</p>
+		<p class="pb-3">
+			So I did some honest-to-goodness research. The bounds of the object have a special property; it's an
+			axis-aligned bounding box, meaning that it can only rotate at 90-degree angles. These are fairly common in
+			3D physics, as they dramatically simplify a lot of calculations. So I looked up a way to calculate if a ray
+			intersects an AABB, and I found an algorithm known as the slab method. I won't pretend to understand it, but
+			it was <a class="link"
+				href="https://github.com/ItsAlxl/sbox-neverspace/blob/main/code/Extensions.cs#L59-L65">straightforward
+				to implement</a>.
+		</p>
+		<div class="divider uppercase text-secondary text-xl font-bold" id="conclusion">Conclusion</div>
+		<p class="pb-3">
+			Between the portals, gravity, and quantum objects, you now know nearly everything about what makes
+			Neverspace tick. It was a lot of fun following in the footsteps of Prey's developers from almost 20 years
+			ago, and this gave me a vastly improved understanding and comfortability working with s&box.
+			If you would like to dive in further, the code is <a class="link"
+				href="https://github.com/ItsAlxl/sbox-neverspace/tree/main">publicly available</a>.
+		</p>
+		<p class="pb-3">
+			However, there are still a few noteworthy issues that remain in the game. Read on if you're curious about
+			those. Otherwise, thanks for reading!
+		</p>
+		<div class="divider uppercase text-secondary text-xl font-bold" id="issues">Addendum: Remaining Issues</div>
+		<p class="pb-3 text-lg">
+			AfterUI
+		</p>
+		<p class="pb-3">
+			I'll begin with the issue that is by far the most egregious, though it isn't really my fault. Like I
+			mentioned at the start of this, s&box is still very much in development. It only recently became available
+			to the general public, and is still considered to be in a "developer preview" state. This means that there
+			are bound to be bugs and compatibility-breaking changes (so who knows if Neverspace will even still work in
+			the near future).
+		</p>
+		<p class="pb-3">
+			One bug is that objects' colors are always wrong. I'm not sure what the cause of this is - some people
+			suspect it's the tonemapping, which is a post-processing effect that can't be turned off due to a bug. The
+			reason this is a problem is because the portals are displaying whatever their ghost camera is rendering -
+			and if the colors aren't a perfect match, it'll be extremely jarring to walk through them.
+		</p>
+		<p class="pb-3">
+			The workaround to this that I found is very, very bad. S&box allows developers to delay a 3D object's
+			rendering until a specified later stage in the rendering pipeline. If an object is rendered very late, then
+			it'll get drawn <i>after</i> tonemapping and other post-processing is applied, and fix the issue.
+		</p>
+		<p class="pb-3">
+			But this is a double-edged sword. By delaying until after the post-processing effects, the object is drawn
+			on top of everything else that came before it. This is actually very useful if you want to draw the 3D
+			object as part of the player's UI, but extremely bad if you want to draw something as part of the 3D
+			environment.
+		</p>
+		<p class="pb-3">
+			The fix? <i>Draw everything really late in the pipeline.</i> And by everything, I mean everything. The
+			portals, the walls, the boxes, the player model - it all gets drawn after the UI. This also means there
+			can't be a UI, because the 3D world would get drawn over it. This is a terrible, terrible solution... but
+			also the only one available to me at the time of development.
+		</p>
+		<p class="pb-3 text-lg">
+			Portal Cutoff
+		</p>
+		<p class="pb-3">
+			As I mentioned when describing how the portals work, there are two tricks in place to prevent rendering
+			stuff "beyond" a portal. The ghost camera cuts off anything between itself and the portal, and an object
+			sitting halfway through a portal cuts off anything of itself beyond that portal.
+		</p>
+		<p class="pb-3">
+			Unfortunately, both of these processes result in a noticeable "seam" that completely ruins the effect of an
+			object passing through a portal. I ended up adding a buffer for both of these cut offs - the ghost camera
+			begins rendering a very small distance before the portal, and a transient object renders a little bit of
+			itself on the other side of the portal it's traveling through.
+		</p>
+		<p class="pb-3">
+			This negatively impacts both effects. You can see a thin slice of an object on the opposite side of the
+			portal that that object is resting in; and if you put an object next to a portal, walk through it, and walk
+			around to the other side, you will be able to see a little bit of that object, even though you'd now be
+			looking at the side of the portal that shouldn't see it at all.
+		</p>
+		<p class="pb-3">
+			In theory, this could be solved by figuring out which objects should get overdrawn and only drawing the
+			extra buffers for those objects, but that's more difficult than I was willing to do. The current
+			implementation works for everything except some edge cases that are mostly unattainable in Neverspace due to
+			the level design.
+		</p>
+		<p class="pb-3 text-lg">
+			Rooms
+		</p>
+		<p class="pb-3">
+			As I built the game's levels, I became concerned with the relatively large number of cameras I was putting
+			into the game. Every single portal required its own camera, and each camera would require its own rendering
+			process. There are easily over 20 portals, meaning that the game would be having to do more than twenty
+			times the work to render every frame.
+		</p>
+		<p class="pb-3">
+			To prevent a huge performance hit, I decided to implement a Room system that would disable portals - and
+			their cameras - based on which room the player is in. After all, the only portals that really need to be
+			active are the portals in the current room and the portals that they connect to.
+		</p>
+		<p class="pb-3">
+			This system works well and greatly reduces the performance hit from all those portals, but there's a bad
+			side-effect. The visuals of one of the first portals in Neverspace completely breaks if it's disabled and
+			then later enabled. Because all portals are initially disabled, this portal would break every single time. I
+			believe it's an engine bug that's affecting the portal's camera, but this only occurs in the compiled game,
+			and not in the development editor (which made it really annoying to debug!).
+		</p>
+		<p class="pb-3">
+			As a workaround, I added a flag to that specific portal which prevents it from being disabled until after
+			the player has left it. Thankfully, the portal was already designed to never be returned to.
+		</p>
+		<div class="pb-16"></div>
+	</div>
+</body>
+
+</html>
